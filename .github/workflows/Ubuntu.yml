@@ -1,0 +1,43 @@
+name: Playit VNC Tunnel on Ubuntu
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup-vnc-tunnel:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out the repository
+      uses: actions/checkout@v2
+
+    - name: Update and Install Dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y wget x11vnc fluxbox curl gnupg
+
+    - name: Add Playit Repository and Install Playit
+      run: |
+        curl -SsL https://playit-cloud.github.io/ppa/key.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/playit.gpg >/dev/null
+        echo "deb [signed-by=/etc/apt/trusted.gpg.d/playit.gpg] https://playit-cloud.github.io/ppa/data ./" | sudo tee /etc/apt/sources.list.d/playit-cloud.list
+        sudo apt update
+        sudo apt install playit -y
+
+    - name: Set up VNC server
+      run: |
+        # Set up a VNC password
+        echo "vncpassword" | vncpasswd -f > ~/.vnc/passwd
+        chmod 600 ~/.vnc/passwd
+
+        # Start VNC server
+        x11vnc -forever -usepw -display :0 &
+
+    - name: Start Playit and Set Up Tunnel
+      env:
+        PLAYIT_AUTH_KEY: ${{ secrets.PL }} 
+      run: |
+        playit --secret ${{ secrets.PL }} &
+
+    - name: Keep the GitHub Action Runner Alive
+      run: |
+          sleep 11800  # Adjust the duration based on your needs
